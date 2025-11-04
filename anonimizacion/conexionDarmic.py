@@ -4,37 +4,42 @@ import sys
 
 config = {}
 
-try:
-    conn = mariadb.connect(**config)
-    print("¡Conexión exitosa!")
+def addNRRD (study_name, nrrd_string):
 
-    cur = conn.cursor()
 
-    cur.execute("Select name, provincia from institution i order by provincia ASC;")
+    try:
+        if (study_name == "") or (nrrd_string == ""):
+            raise ValueError("El nombre del estudio y la cadena NRRD no pueden estar vacíos.")
 
-    for (columna1, columna2) in cur:
-        print(f"Columna1: {columna1}, Columna2: {columna2}")
+        conn = mariadb.connect(**config)
+        print("¡Conexión exitosa!")
 
-    # Ejemplo: Insertar datos usando parámetros (evita inyecciones SQL)
-    #try:
-    #    cur.execute(
-    #        "INSERT INTO tu_tabla (columna1, columna2) VALUES (?, ?)",
-    #        ("dato_ejemplo", 123)
-    #    )
+        cur = conn.cursor()
+
+        cur.execute(
+            """
+            SELECT s.id FROM sacunnoba.study AS s
+            WHERE name = ?
+            """, (study_name,)
+        )
+        row = cur.fetchone()
+        if row is None:
+            raise ValueError(f"Estudio '{study_name}' no encontrado en la tabla 'study'.")
+        study_id = row[0]
+
+        cur.execute(
+            "INSERT INTO study_nrrd_id (study_id, nrrd_id) VALUES (?, ?)",
+            (study_id, nrrd_string)
+        )
         # Confirmar la transacción
-    #    conn.commit()
-    #    print(f"ID del último registro insertado: {cur.lastrowid}")
+        conn.commit()
+        print(f"ID del último registro insertado: {cur.lastrowid}")
 
-    #except mariadb.Error as e:
-    #    print(f"Error en la inserción: {e}")
+    except mariadb.Error as e:
+        print(f"Error al conectarse a la plataforma MariaDB: {e}")
+        sys.exit(1)
 
-# Manejar excepciones de conexión
-except mariadb.Error as e:
-    print(f"Error al conectarse a la plataforma MariaDB: {e}")
-    sys.exit(1)
-
-finally:
-    # Cerrar la conexión siempre
-    if conn:
-        conn.close()
-        print("Conexión cerrada.")
+    finally:
+        if conn:
+            conn.close()
+            print("Conexión cerrada.")
