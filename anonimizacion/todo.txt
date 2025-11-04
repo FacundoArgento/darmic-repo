@@ -1,0 +1,3 @@
+1- Arreglar codigo para que tome los archivos sin .dcm en filename
+2- Ir anonimzando y revisando.
+3- Asociar nombre generado por cmr_dicom_export a estudio. Crear nueva tabla y asignar study_id con filename generado. (id, string)
