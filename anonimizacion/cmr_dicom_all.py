@@ -54,12 +54,16 @@ class AllReader:
         self.seriesDescription = None
         self.seriesNumber = "0"
 
-        dicom_files = [
-            f
-            for f in os.listdir(dicom_folder)
-            if os.path.isfile(os.path.join(dicom_folder, f))
-            and f.lower().endswith(".dcm")
-        ]
+        dicom_files = []
+        for f in os.listdir(dicom_folder):
+            fp = os.path.join(dicom_folder, f)
+            if not os.path.isfile(fp):
+                continue
+            try:
+                pydicom.dcmread(fp, stop_before_pixels=True, force=False)
+                dicom_files.append(f)
+            except Exception:
+                continue
 
         dicom_files = natsorted(dicom_files)
         nfiles = len(dicom_files)

@@ -12,7 +12,8 @@ import os
 import argparse
 import SimpleITK as sitk
 from pathlib import Path
-from reader.cmr_dicom_all import AllReader
+from cmr_dicom_all import AllReader
+from pydicom import dcmread
 import glob
 
 
@@ -80,7 +81,7 @@ if __name__ == "__main__":
     if args.dicom_data:
         dicom_data = args.dicom_data
     else:
-        dicom_data = "/media/usuario/Disco 2 teras/Originales/Imagenes MDQ-Amira 1.5 T-RM Contraste-Otros-2024-06-17_13:21:22"
+        dicom_data = "/home/facundo/Documents/unnoba/investicaciones_patologicas/darmic-repo/test_files/studys"
 
     output_folder_base = (
         dicom_data if len(args.output_folder) == 0 else args.output_folder
@@ -88,7 +89,7 @@ if __name__ == "__main__":
     
     # Usar la ruta hardcodeada si no se proveyó -o
     if not args.output_folder:
-        output_folder_base = "/home/usuario/Escritorio/DARMIC/Anonimización/EstudioPrueba"
+        output_folder_base = "/home/facundo/Documents/unnoba/investicaciones_patologicas/darmic-repo/test_files/results"
     
     
     folder = dicom_data
@@ -100,9 +101,25 @@ if __name__ == "__main__":
     with open('archivo_salida.txt', 'w') as archivo:
         print(f"Buscando archivos .dcm recursivamente en: {folder}...",file=archivo)
         for file in glob.iglob(recursive_path, recursive=True):     
-            if not file.endswith(".dcm"):
+            if "is_dicom_file" not in locals():
+                try:
+                    def is_dicom_file(path):
+                        try:
+                            dcmread(path, stop_before_pixels=True, force=False)
+                            return True
+                        except Exception:
+                            return False
+                except Exception:
+                    def is_dicom_file(path):
+                        try:
+                            with open(path, "rb") as f:
+                                f.seek(128)
+                                return f.read(4) == b"DICM"
+                        except Exception:
+                            return False
+
+            if not os.path.isfile(file) or not is_dicom_file(file):
                 continue
-            
             # Obtener la carpeta contenedora
             folder_name, nombre_archivo = os.path.split(file)
             print(f"****** Encontró archivo: {nombre_archivo} en carpeta {folder}",file=archivo)
