@@ -15,11 +15,23 @@ from pathlib import Path
 from cmr_dicom_all import AllReader
 from pydicom import dcmread
 import glob
+from conexionDarmic import addNRRDtoStudyInDarmic
+import re
 
+def extract_study_name(path):
+    parts = path.split('/')
+    for part in parts:
+        if part.count('-') >= 5 and re.search(r'_\d{2}:?\d{2}:?\d{2}$', part):
+            return part
+    return None
 
 def main(dicom_data, output_folder, file_format, study_id, archivo):
     # NUEVO: Manejo de errores básicos por si la carpeta está vacía o es inválida
     try:
+        study_name = extract_study_name(dicom_data)
+        if study_name is None:
+            print(f"No se pudo extraer el nombre del estudio de la ruta: {dicom_data}",file=archivo)
+            return
         reader = AllReader(dicom_data, study_id, use_dicom_id=False)
         reader.execute()
         I = reader.get_array()
@@ -59,6 +71,13 @@ def main(dicom_data, output_folder, file_format, study_id, archivo):
         sitk.WriteImage(img, fname, True)
         print(f"Archivo procesado: {fname}",file=archivo)
     
+    # --- AGREGAMOS EL patientID en la base de DARMIC
+    try:
+        addNRRDtoStudyInDarmic(study_name=study_name, nrrd_string=reader.patientID)
+    except Exception as e:
+        print(f"Error al agregar NRRD ID a Darmic para el estudio '{study_name}': {e}",file=archivo)
+        return
+
     print(f"Completado: {dicom_data} .",file=archivo)
 
 
@@ -81,7 +100,7 @@ if __name__ == "__main__":
     if args.dicom_data:
         dicom_data = args.dicom_data
     else:
-        dicom_data = "/home/facundo/Documents/unnoba/investicaciones_patologicas/darmic-repo/test_files/studys"
+        dicom_data = "./test_files/studys"
 
     output_folder_base = (
         dicom_data if len(args.output_folder) == 0 else args.output_folder
@@ -89,7 +108,7 @@ if __name__ == "__main__":
     
     # Usar la ruta hardcodeada si no se proveyó -o
     if not args.output_folder:
-        output_folder_base = "/home/facundo/Documents/unnoba/investicaciones_patologicas/darmic-repo/test_files/results"
+        output_folder_base = "./test_files/results"
     
     
     folder = dicom_data

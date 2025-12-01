@@ -20,7 +20,7 @@ def addNRRD (study_name, nrrd_string):
             """
             SELECT s.id FROM sacunnoba.study AS s
             WHERE name = ?
-            """, (study_name,)
+            """, ([study_name])
         )
         row = cur.fetchone()
         if row is None:
@@ -29,10 +29,10 @@ def addNRRD (study_name, nrrd_string):
 
         cur.execute(
             "INSERT INTO study_nrrd_id (study_id, nrrd_id) VALUES (?, ?)",
-            (study_id, nrrd_string)
+            ([study_id, nrrd_string])
         )
-        # Confirmar la transacción
         conn.commit()
+        
         print(f"ID del último registro insertado: {cur.lastrowid}")
 
     except mariadb.Error as e:
