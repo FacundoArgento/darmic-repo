@@ -15,15 +15,7 @@ from pathlib import Path
 from cmr_dicom_all import AllReader
 from pydicom import dcmread
 import glob
-from conexionDarmic import addNRRDtoStudyInDarmic
-import re
-
-def extract_study_name(path):
-    parts = path.split('/')
-    for part in parts:
-        if part.count('-') >= 5 and re.search(r'_\d{2}:?\d{2}:?\d{2}$', part):
-            return part
-    return None
+from conexionDarmic import add_NRRD_to_study_in_darmic, get_study_id_by_name, extract_study_name
 
 def main(dicom_data, output_folder, file_format, study_id, archivo):
     # NUEVO: Manejo de errores básicos por si la carpeta está vacía o es inválida
@@ -43,7 +35,8 @@ def main(dicom_data, output_folder, file_format, study_id, archivo):
     origin = reader.origin
     spacing = reader.spacing
 
-    save_path = Path(output_folder)
+    study_id = get_study_id_by_name(study_name)
+    save_path = Path(output_folder) / f'study_{study_id}'
     save_path.mkdir(parents=True, exist_ok=True)
 
     # --- NUEVO: Verificación de archivos existentes ---
@@ -52,7 +45,7 @@ def main(dicom_data, output_folder, file_format, study_id, archivo):
     for i in range(len(time)):
         #UNNOBA: Se agrega la SerieDescription al nombre del archivo
         fname = f"{reader.seriesDescription}_{reader.patientID}_{i:02d}.{file_format}"
-        expected_files.append(os.path.join(output_folder, fname))
+        expected_files.append(os.path.join(save_path, fname))
 
     print(f"Procesando: '{dicom_data}' (ID: {reader.patientID})...",file=archivo)
     for i, t in enumerate(time):
@@ -73,7 +66,7 @@ def main(dicom_data, output_folder, file_format, study_id, archivo):
     
     # --- AGREGAMOS EL patientID en la base de DARMIC
     try:
-        addNRRDtoStudyInDarmic(study_name=study_name, nrrd_string=reader.patientID)
+        add_NRRD_to_study_in_darmic(study_id=study_id, nrrd_string=reader.patientID)
     except Exception as e:
         print(f"Error al agregar NRRD ID a Darmic para el estudio '{study_name}': {e}",file=archivo)
         return
@@ -145,6 +138,7 @@ if __name__ == "__main__":
 
             # Añadir la carpeta al set (los duplicados se ignoran automáticamente)
             folders_to_process.add(folder_name)
+
     
         if not folders_to_process:
             print("No se encontraron carpetas con archivos .dcm.",file=archivo)
